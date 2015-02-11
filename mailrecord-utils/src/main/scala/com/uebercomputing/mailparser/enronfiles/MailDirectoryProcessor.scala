@@ -16,6 +16,9 @@ abstract class MailDirectoryProcessor(mailDirectory: Path, userNamesToProcess: L
 
   private val Logger = LogManager.getLogger(classOf[MailDirectoryProcessor])
 
+  private val fileManager = FileManager()
+  println(s"Using fileManager = $fileManager")
+  
   def processMailDirectory(): Int = {
     var mailMessagesProcessedCount = 0
     val userDirectories = PathUtils.listChildPaths(mailDirectory)
@@ -59,7 +62,7 @@ abstract class MailDirectoryProcessor(mailDirectory: Path, userNamesToProcess: L
     var processedCount = processCountSoFar
     val mailsOrSubdirs = PathUtils.listChildPaths(folder)
     for (mailOrSubdir <- mailsOrSubdirs) {
-      if (Files.isRegularFile(mailOrSubdir)) {
+      if (fileManager.isRegularFile(mailOrSubdir)) {
         processedCount = processFile(userName, folderName, mailOrSubdir, processedCount)
       } else {
         processedCount = processFolder(userName, Some(folderName), mailOrSubdir, processedCount)
@@ -76,7 +79,7 @@ abstract class MailDirectoryProcessor(mailDirectory: Path, userNamesToProcess: L
 
   def processFile(userName: String, folderName: String, mailFile: Path, processedCount: Int): Int = {
     val fileName = mailFile.getFileName().toString()
-    for (mailIn <- managed(Files.newInputStream(mailFile))) {
+    for (mailIn <- managed(fileManager.inputStream(mailFile))) {
       try {
         val fileSystemMetadata = FileSystemMetadata(userName, folderName,
           fileName)
