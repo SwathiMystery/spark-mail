@@ -1,13 +1,11 @@
 package com.uebercomputing.mailparser.enronfiles
 
-import java.nio.file.Files
 import java.nio.file.Path
 
 import scala.io.Source
 
 import org.apache.logging.log4j.LogManager
 
-import com.uebercomputing.io.PathUtils
 import com.uebercomputing.io.Utf8Codec
 
 import resource.managed
@@ -17,13 +15,12 @@ abstract class MailDirectoryProcessor(mailDirectory: Path, userNamesToProcess: L
   private val Logger = LogManager.getLogger(classOf[MailDirectoryProcessor])
 
   private val fileManager = FileManager()
-  println(s"Using fileManager = $fileManager")
-  
+
   def processMailDirectory(): Int = {
     var mailMessagesProcessedCount = 0
-    val userDirectories = PathUtils.listChildPaths(mailDirectory)
+    val userDirectories = fileManager.listChildPaths(mailDirectory)
     for (userDirectory <- userDirectories) {
-      if (isReadableDirectory(userDirectory)) {
+      if (fileManager.isReadableDir(userDirectory)) {
         mailMessagesProcessedCount = processUserDirectory(userDirectory, mailMessagesProcessedCount)
       } else {
         val errMsg = s"Mail directory layout (${userDirectory} violates assumption: " +
@@ -39,9 +36,9 @@ abstract class MailDirectoryProcessor(mailDirectory: Path, userNamesToProcess: L
       var processedCount = processedCountSoFar
       if (userNamesToProcess == Nil || isUserDirectoryToBeProcessed(userDirectory)) {
         val userName = userDirectory.getFileName().toString()
-        val folders = PathUtils.listChildPaths(userDirectory)
+        val folders = fileManager.listChildPaths(userDirectory)
         for (folder <- folders) {
-          if (isReadableDirectory(folder)) {
+          if (fileManager.isReadableDir(folder)) {
             val parentFolderName = None
             processedCount = processFolder(userName, parentFolderName,
               folder, processedCount)
@@ -57,10 +54,10 @@ abstract class MailDirectoryProcessor(mailDirectory: Path, userNamesToProcess: L
   }
 
   def processFolder(userName: String, parentFolderName: Option[String],
-                    folder: Path, processCountSoFar: Int): Int = {
+    folder: Path, processCountSoFar: Int): Int = {
     val folderName = getFolderName(parentFolderName, folder)
     var processedCount = processCountSoFar
-    val mailsOrSubdirs = PathUtils.listChildPaths(folder)
+    val mailsOrSubdirs = fileManager.listChildPaths(folder)
     for (mailOrSubdir <- mailsOrSubdirs) {
       if (fileManager.isRegularFile(mailOrSubdir)) {
         processedCount = processFile(userName, folderName, mailOrSubdir, processedCount)
@@ -100,11 +97,7 @@ abstract class MailDirectoryProcessor(mailDirectory: Path, userNamesToProcess: L
   def getFolderName(parentFolderNameOpt: Option[String], folder: Path): String = {
     parentFolderNameOpt match {
       case Some(parentFolder) => s"${parentFolder}/${folder.getFileName().toString()}"
-      case None               => folder.getFileName().toString()
+      case None => folder.getFileName().toString()
     }
-  }
-
-  def isReadableDirectory(potentialDir: Path): Boolean = {
-    return Files.isDirectory(potentialDir) && Files.isReadable(potentialDir)
   }
 }
